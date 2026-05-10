@@ -1,6 +1,6 @@
 const CONFIG = {
   // Deja esto en demo por ahora. Más tarde pones la URL real del dueño.
-APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwiDTTh_KYGOFs0XWo5k-zEgOJvsn0_eeZTX6w2314-1BI-LLgv2gGSqqKiC4HNEHNR/exec',
+APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyXXnINzldWyPREEMD_cFvdw2jPPxdEjUTts2HanKoarO3LGqgfbQiITDZAeLPZva8R/exec',
   // WhatsApp del negocio (formato: 52 + lada + número, sin espacios)
   PHONE: '5212381234567',
   
