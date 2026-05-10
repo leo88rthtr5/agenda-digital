@@ -157,7 +157,6 @@ async function onSubmit(e) {
   const nombre = $('inpNombre').value.trim();
   const phone = $('inpWhatsApp').value.trim();
   const servicio = $('inpServicio').value.trim();
-  // El dueño marca pago desde el panel
   if (!nombre || !phone) return;
 
   const { date, time } = selectedSlot;
@@ -172,7 +171,7 @@ async function onSubmit(e) {
   if (isDemo) {
     if (!slotsData[date]) slotsData[date] = {};
     slotsData[date][time] = { status: 'busy' };
-   saveToLocal(date, time, nombre, phone, servicio, 'pendiente');
+    saveToLocal(date, time, nombre, phone, servicio, 'pendiente');
     showSuccess();
     btn.disabled = false;
     btn.textContent = 'Confirmar Reserva';
@@ -183,7 +182,7 @@ async function onSubmit(e) {
     const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
       method: 'POST',
       redirect: 'follow',
-      body: JSON.stringify({ fecha: date, hora: time, nombre, whatsapp: phone, servicio, pago: anticipo ? 'pagado' : 'pendiente' }),
+      body: JSON.stringify({ fecha: date, hora: time, nombre, whatsapp: phone, servicio, pago: 'pendiente' }),
       headers: { 'Content-Type': 'text/plain;charset=utf-8' }
     });
     const text = await res.text();
