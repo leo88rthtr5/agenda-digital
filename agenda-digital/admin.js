@@ -174,11 +174,16 @@ function updateNextBar() {
   $('nextWA').href = telClean ? `https://wa.me/52${telClean}` : '#';
 }
 
+// Busca índice real en allReservas por fecha+hora
+function findIndex(fecha, hora) {
+  return allReservas.findIndex(r => cleanDate(r.fecha) === fecha && cleanTime(r.hora) === hora);
+}
+
 function renderList(reservas) {
   const list = $('reservasList');
   list.innerHTML = '';
 
-  reservas.forEach((r, idx) => {
+  reservas.forEach((r) => {
     const isCancel = r.estado === 'cancelada';
     const badgeClass = isCancel ? 'badge-cancel' : 'badge-conf';
     const badgeText  = isCancel ? 'Cancelada' : 'Confirmada';
@@ -186,6 +191,8 @@ function renderList(reservas) {
     const telClean = (r.whatsapp || '').replace(/\D/g, '');
     const fechaLimpia = cleanDate(r.fecha);
     const horaLimpia = cleanTime(r.hora);
+    // ID único basado en fecha+hora para los inputs
+    const idSafe = fechaLimpia + '-' + horaLimpia.replace(':', '-');
 
     const div = document.createElement('div');
     div.className = 'card-pastel p-5';
@@ -206,22 +213,22 @@ function renderList(reservas) {
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
           ${telClean ? `<a href="https://wa.me/52${telClean}" target="_blank" class="btn-sm">WhatsApp →</a>` : ''}
-          ${!isCancel ? `<button class="btn-sm btn-danger" onclick="cancelReserva(${idx}, '${fechaLimpia}', '${horaLimpia}')">Cancelar</button>` : ''}
+          ${!isCancel ? `<button class="btn-sm btn-danger" onclick="cancelReserva('${fechaLimpia}', '${horaLimpia}')">Cancelar</button>` : ''}
         </div>
       </div>
       ${!isCancel ? `<div class="mt-3 pt-3 border-t border-[#E8E4DE]">
         <div class="flex items-center gap-2">
-          <input type="checkbox" id="pay-${idx}" ${r.pago === 'pagado' ? 'checked' : ''} onchange="togglePay(${idx})" class="accent-[#E07A5F]"/>
-          <label for="pay-${idx}" class="text-[10px] font-bold uppercase tracking-widest text-[#9A9590]">Anticipo pagado</label>
+          <input type="checkbox" id="pay-${idSafe}" ${r.pago === 'pagado' ? 'checked' : ''} onchange="togglePay('${fechaLimpia}', '${horaLimpia}')" class="accent-[#E07A5F]"/>
+          <label for="pay-${idSafe}" class="text-[10px] font-bold uppercase tracking-widest text-[#9A9590]">Anticipo pagado</label>
         </div>
-        <textarea id="note-${idx}" class="mt-2 w-full bg-[#FDFCF8] border border-[#E8E4DE] rounded-lg p-2 text-xs text-[#3D405B] resize-none" rows="1" placeholder="Nota interna (ej. Alergia, llega tarde...)" onblur="saveNote(${idx})">${r.nota || ''}</textarea>
+        <textarea id="note-${idSafe}" class="mt-2 w-full bg-[#FDFCF8] border border-[#E8E4DE] rounded-lg p-2 text-xs text-[#3D405B] resize-none" rows="1" placeholder="Nota interna (ej. Alergia, llega tarde...)" onblur="saveNote('${fechaLimpia}', '${horaLimpia}')">${r.nota || ''}</textarea>
       </div>` : ''}
     `;
     list.appendChild(div);
   });
 }
 
-async function cancelReserva(idx, fecha, hora) {
+async function cancelReserva(fecha, hora) {
   if (!confirm('¿Cancelar esta reserva? El horario quedará libre.')) return;
 
   const isDemo = !CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.includes('TU_ID_AQUI');
@@ -260,14 +267,15 @@ async function cancelReserva(idx, fecha, hora) {
   }
 }
 
-async function togglePay(idx) {
-  const cb = document.getElementById('pay-' + idx);
+async function togglePay(fecha, hora) {
+  const idSafe = fecha + '-' + hora.replace(':', '-');
+  const cb = document.getElementById('pay-' + idSafe);
   if (!cb) return;
 
+  const idx = findIndex(fecha, hora);
+  if (idx === -1) return;
+
   const isDemo = !CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.includes('TU_ID_AQUI');
-  const r = allReservas[idx];
-  const fecha = cleanDate(r.fecha);
-  const hora = cleanTime(r.hora);
   const nuevoEstado = cb.checked ? 'pagado' : 'pendiente';
 
   if (isDemo) {
@@ -284,7 +292,6 @@ async function togglePay(idx) {
     return;
   }
 
-  // Sheet real
   try {
     await fetch(CONFIG.APPS_SCRIPT_URL, {
       method: 'POST',
@@ -296,18 +303,19 @@ async function togglePay(idx) {
     applyFilter(); updateStats();
   } catch (err) {
     console.error('Error al actualizar pago:', err);
-    cb.checked = !cb.checked; // revertir visual
+    cb.checked = !cb.checked;
   }
 }
 
-async function saveNote(idx) {
-  const ta = document.getElementById('note-' + idx);
+async function saveNote(fecha, hora) {
+  const idSafe = fecha + '-' + hora.replace(':', '-');
+  const ta = document.getElementById('note-' + idSafe);
   if (!ta) return;
 
+  const idx = findIndex(fecha, hora);
+  if (idx === -1) return;
+
   const isDemo = !CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.includes('TU_ID_AQUI');
-  const r = allReservas[idx];
-  const fecha = cleanDate(r.fecha);
-  const hora = cleanTime(r.hora);
   const nota = ta.value.trim();
 
   if (isDemo) {
@@ -322,7 +330,6 @@ async function saveNote(idx) {
     return;
   }
 
-  // Sheet real
   try {
     await fetch(CONFIG.APPS_SCRIPT_URL, {
       method: 'POST',
