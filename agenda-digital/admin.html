@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Panel | Agenda Digital</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#FDFCF8; --card:#F7F3EF; --ink:#3D405B; --muted:#9A9590; --accent:#E07A5F; --accent-soft:#F2CC8F; --border:#E8E4DE; --shadow:rgba(61,64,91,0.06); }
+    body { background:var(--bg); color:var(--ink); font-family:'Inter',sans-serif; margin:0; }
+    .font-mono { font-family:'Space Mono',monospace; }
+    .card-pastel { background:#fff; border:1px solid var(--border); border-radius:16px; box-shadow:0 2px 12px var(--shadow); }
+    .badge { font-family:'Space Mono',monospace; font-size:10px; font-weight:700; padding:4px 10px; border-radius:6px; text-transform:uppercase; display:inline-block; }
+    .badge-conf { background:var(--accent-soft); color:var(--ink); }
+    .badge-cancel { background:var(--card); color:var(--muted); text-decoration:line-through; }
+    .badge-paid { background:#81B29A; color:#fff; }
+    .badge-pending { background:var(--card); color:var(--muted); }
+    .btn-sm { padding:6px 12px; border-radius:8px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; border:1px solid var(--border); background:#fff; color:var(--ink); cursor:pointer; transition:all .15s; }
+    .btn-sm:hover { border-color:var(--accent); color:var(--accent); }
+    .btn-danger { border-color:var(--accent); color:var(--accent); }
+    .btn-danger:hover { background:var(--accent); color:#fff; }
+    .btn-ghost { border-color:transparent; color:var(--muted); }
+    .btn-ghost:hover { color:var(--ink); }
+    .filter-active { background:var(--ink); color:#fff; border-color:var(--ink); }
+    .stats-box { background:#fff; border:1px solid var(--border); border-radius:12px; padding:16px 20px; }
+    .next-bar { background:var(--ink); color:#fff; border-radius:12px; padding:14px 20px; }
+    ::-webkit-scrollbar { width:6px; }
+    ::-webkit-scrollbar-track { background:var(--bg); }
+    ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+    ::selection { background:var(--accent); color:#fff; }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <header class="bg-white/70 backdrop-blur-sm border-b border-[#E8E4DE] px-5 md:px-10 py-4 sticky top-0 z-50">
+    <div class="max-w-[1400px] mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full bg-[#E07A5F] flex items-center justify-center text-white text-xs font-bold font-mono">TK</div>
+        <div class="flex flex-col">
+          <span class="text-[10px] uppercase tracking-[0.25em] text-[#9A9590] font-mono font-bold">Agenda Digital</span>
+          <span class="text-sm font-bold tracking-tight text-[#3D405B]" id="headerBusiness">Panel de Reservas</span>
+        </div>
+      </div>
+      <a href="index.html" class="text-[10px] font-bold uppercase tracking-widest text-[#9A9590] hover:text-[#E07A5F] transition-colors">← Ver Agenda Pública</a>
+    </div>
+  </header>
+
+  <main class="max-w-[1400px] mx-auto p-5 md:p-10 space-y-6">
+
+    <!-- Próxima cita -->
+    <div id="nextBar" class="next-bar hidden">
+      <div class="flex items-center justify-between">
+        <div>
+          <span class="text-[10px] uppercase tracking-widest text-[#F2CC8F] font-mono font-bold">Siguiente cita</span>
+          <div class="text-sm font-bold mt-0.5" id="nextText">--</div>
+        </div>
+        <a id="nextWA" href="#" target="_blank" class="text-[10px] font-bold uppercase tracking-widest text-white/70 hover:text-white transition-colors">WhatsApp →</a>
+      </div>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="statsRow">
+      <div class="stats-box">
+        <div class="text-[10px] uppercase tracking-widest text-[#9A9590] font-mono font-bold">Esta semana</div>
+        <div class="text-2xl font-bold text-[#3D405B] mt-1" id="statWeek">0</div>
+      </div>
+      <div class="stats-box">
+        <div class="text-[10px] uppercase tracking-widest text-[#9A9590] font-mono font-bold">Hoy</div>
+        <div class="text-2xl font-bold text-[#E07A5F] mt-1" id="statToday">0</div>
+      </div>
+      <div class="stats-box">
+        <div class="text-[10px] uppercase tracking-widest text-[#9A9590] font-mono font-bold">Canceladas</div>
+        <div class="text-2xl font-bold text-[#9A9590] mt-1" id="statCancel">0</div>
+      </div>
+      <div class="stats-box">
+        <div class="text-[10px] uppercase tracking-widest text-[#9A9590] font-mono font-bold">Ingreso est.</div>
+        <div class="text-2xl font-bold text-[#81B29A] mt-1" id="statIncome">$0</div>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="flex items-center gap-2 flex-wrap">
+      <button class="btn-sm filter-active" data-filter="all" onclick="setFilter('all')">Todas</button>
+      <button class="btn-sm btn-ghost" data-filter="today" onclick="setFilter('today')">Hoy</button>
+      <button class="btn-sm btn-ghost" data-filter="tomorrow" onclick="setFilter('tomorrow')">Mañana</button>
+      <button class="btn-sm btn-ghost" data-filter="week" onclick="setFilter('week')">Esta semana</button>
+      <button class="btn-sm btn-ghost" data-filter="pending" onclick="setFilter('pending')">Pago pendiente</button>
+    </div>
+
+    <!-- Lista -->
+    <div class="flex items-end justify-between">
+      <div>
+        <h1 class="text-xl md:text-2xl font-bold text-[#3D405B] mb-1">Reservas entrantes</h1>
+        <p class="text-xs text-[#9A9590]">Citas recibidas desde la web. Recarga para ver las últimas.</p>
+      </div>
+      <button id="btnReload" class="text-[10px] font-bold uppercase tracking-widest text-[#9A9590] hover:text-[#E07A5F] transition-colors flex items-center gap-1">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 8C2 11 4.5 14 8 14C11.5 14 14 11 14 8M14 8V4M14 8H10" stroke="currentColor" stroke-width="1.5"/></svg>
+        Recargar
+      </button>
+    </div>
+
+    <div id="reservasList" class="space-y-3"></div>
+    <div id="emptyState" class="hidden text-center py-16">
+      <p class="text-xs text-[#9A9590] font-medium">No hay reservas para este filtro.</p>
+    </div>
+
+  </main>
+
+  <script src="config.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

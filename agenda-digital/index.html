@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>THE KNIGHT CODE | Agenda Digital</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #FDFCF8;
+      --card: #F7F3EF;
+      --ink: #3D405B;
+      --muted: #9A9590;
+      --accent: #E07A5F;
+      --accent-soft: #F2CC8F;
+      --border: #E8E4DE;
+      --shadow: rgba(61, 64, 91, 0.06);
+    }
+    body { background: var(--bg); color: var(--ink); font-family: 'Inter', sans-serif; }
+    .font-mono { font-family: 'Space Mono', monospace; }
+
+    .card-pastel {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 2px 12px var(--shadow);
+      transition: all 0.2s ease;
+    }
+    .card-pastel:hover { box-shadow: 0 6px 24px rgba(61, 64, 91, 0.10); }
+
+    .slot-btn {
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      color: var(--ink);
+      border-radius: 10px;
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+    .slot-btn:hover:not(:disabled) {
+      border-color: var(--accent);
+      color: var(--accent);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(224, 122, 95, 0.12);
+    }
+    .slot-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      background: transparent;
+      border-color: var(--border);
+      text-decoration: line-through;
+    }
+
+    .input-pastel {
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      color: var(--ink);
+      transition: all 0.2s ease;
+      width: 100%;
+      padding: 0.875rem;
+      font-size: 0.875rem;
+      box-sizing: border-box;
+    }
+    .input-pastel:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(224, 122, 95, 0.10);
+    }
+    .input-pastel::placeholder { color: var(--muted); }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      border-radius: 12px;
+      font-weight: 700;
+      transition: all 0.2s ease;
+      border: none;
+      cursor: pointer;
+      padding: 1rem;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      width: 100%;
+    }
+    .btn-primary:hover {
+      background: #d46a50;
+      box-shadow: 0 6px 20px rgba(224, 122, 95, 0.25);
+      transform: translateY(-1px);
+    }
+    .btn-primary:active { transform: translateY(0); }
+
+    .day-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+    }
+    .day-num {
+      font-family: 'Space Mono', monospace;
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--ink);
+    }
+
+    .loading-shimmer {
+      background: linear-gradient(90deg, var(--card) 25%, #fff 50%, var(--card) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.2s infinite;
+      border-radius: 8px;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    ::selection { background: var(--accent); color: #fff; }
+  </style>
+</head>
+<body class="min-h-screen selection:bg-[#E07A5F] selection:text-white">
+
+  <header class="bg-white/70 backdrop-blur-sm border-b border-[#E8E4DE] px-5 md:px-10 py-4 sticky top-0 z-50">
+    <div class="max-w-[1400px] mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full bg-[#E07A5F] flex items-center justify-center text-white text-xs font-bold font-mono">TK</div>
+        <div class="flex flex-col">
+          <span class="text-[10px] uppercase tracking-[0.25em] text-[#9A9590] font-mono font-bold">The Knight Code</span>
+          <span class="text-sm font-bold tracking-tight text-[#3D405B]" id="headerBusiness">Agenda Digital</span>
+        </div>
+      </div>
+      <div class="text-[10px] text-[#9A9590] font-mono font-bold bg-[#F7F3EF] px-3 py-1.5 rounded-full">v1.0 / PASTEL</div>
+    </div>
+  </header>
+
+  <main class="max-w-[1400px] mx-auto p-5 md:p-10 grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 min-h-[calc(100vh-72px)]">
+
+    <section class="col-span-full lg:col-span-8 flex flex-col gap-6">
+      <div class="flex items-end justify-between">
+        <div>
+          <h1 class="text-xl md:text-2xl font-bold text-[#3D405B] mb-1">Próximos días disponibles</h1>
+          <p class="text-xs text-[#9A9590]">Selecciona un horario para reservar tu cita.</p>
+        </div>
+        <button id="btnRefresh" class="text-[10px] font-bold uppercase tracking-widest text-[#9A9590] hover:text-[#E07A5F] transition-colors flex items-center gap-1">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 8C2 11 4.5 14 8 14C11.5 14 14 11 14 8M14 8V4M14 8H10" stroke="currentColor" stroke-width="1.5"/></svg>
+          Recargar
+        </button>
+      </div>
+
+      <div id="calendarGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      </div>
+    </section>
+
+    <aside class="col-span-full lg:col-span-4">
+      <div class="card-pastel p-6 md:p-8 lg:sticky lg:top-24">
+        <div id="formEmpty" class="text-center py-10">
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none" class="mx-auto mb-3 opacity-30">
+            <rect x="8" y="6" width="24" height="28" rx="3" stroke="#3D405B" stroke-width="1.5"/>
+            <path d="M14 14H26M14 20H26M14 26H22" stroke="#3D405B" stroke-width="1.5"/>
+          </svg>
+          <p class="text-xs text-[#9A9590] font-medium">Selecciona un horario<br/>para iniciar tu reserva.</p>
+        </div>
+
+        <div id="formActive" class="hidden">
+          <div class="mb-5 pb-5 border-b border-[#E8E4DE]">
+            <span class="day-label">Horario seleccionado</span>
+            <div class="flex items-baseline gap-2 mt-1">
+              <span id="selFecha" class="text-sm font-bold text-[#3D405B]">--</span>
+              <span class="text-xs text-[#9A9590]">a las</span>
+              <span id="selHora" class="font-mono text-lg font-bold text-[#E07A5F]">--</span>
+            </div>
+          </div>
+
+          <form id="reservaForm" class="space-y-4">
+            <div>
+              <label class="text-[10px] font-bold uppercase tracking-widest text-[#9A9590] block mb-1.5">Nombre completo</label>
+              <input type="text" id="inpNombre" required class="input-pastel" placeholder="Ej. María González"/>
+            </div>
+            <div>
+              <label class="text-[10px] font-bold uppercase tracking-widest text-[#9A9590] block mb-1.5">WhatsApp</label>
+              <input type="tel" id="inpWhatsApp" required class="input-pastel font-mono" placeholder="238 123 4567"/>
+            </div>
+            <div>
+              <label class="text-[10px] font-bold uppercase tracking-widest text-[#9A9590] block mb-1.5">Servicio (opcional)</label>
+              <input type="text" id="inpServicio" class="input-pastel" placeholder="Ej. Corte de cabello"/>
+            </div>
+
+ 
+
+
+            <button type="submit" class="btn-primary mt-2">Confirmar Reserva</button>
+
+            <a id="btnWAPre" href="#" target="_blank" class="block w-full border border-[#E8E4DE] text-[#3D405B] text-center py-3 text-[10px] font-bold uppercase tracking-widest rounded-xl hover:border-[#E07A5F] hover:text-[#E07A5F] transition-colors">
+              Enviar WhatsApp al negocio
+            </a>
+          </form>
+
+          <div id="formSuccess" class="hidden text-center py-6">
+            <div class="w-12 h-12 rounded-full bg-[#F2CC8F]/30 flex items-center justify-center mx-auto mb-3">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke="#3D405B" stroke-width="2"/></svg>
+            </div>
+            <p class="text-sm font-bold text-[#3D405B] mb-1">Reserva guardada</p>
+            <p class="text-xs text-[#9A9590] mb-4">El negocio confirmará tu cita por WhatsApp.</p>
+            <button id="btnNueva" class="text-[10px] font-bold uppercase tracking-widest text-[#E07A5F] hover:underline">Reservar otro horario</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+  </main>
+
+    <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
