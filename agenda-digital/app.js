@@ -14,6 +14,30 @@ function init() {
   loadData();
 }
 
+function getBusinessDate() {
+  const tz = CONFIG.TIMEZONE || 'America/Mexico_City';
+  const dtf = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' });
+  return dtf.format(new Date());
+}
+
+function formatBusinessDate(d) {
+  const tz = CONFIG.TIMEZONE || 'America/Mexico_City';
+  const dtf = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' });
+  return dtf.format(d);
+}
+
+function getBusinessTime() {
+  const tz = CONFIG.TIMEZONE || 'America/Mexico_City';
+  const dtf = new Intl.DateTimeFormat('en', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });
+  const parts = dtf.formatToParts(new Date());
+  let hh = '', mm = '';
+  for (const p of parts) {
+    if (p.type === 'hour') hh = p.value;
+    if (p.type === 'minute') mm = p.value;
+  }
+  return `${hh.padStart(2, '0')}:${mm.padStart(2, '0')}`;
+}
+
 async function loadData() {
   renderLoading();
   const isDemo = !CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.includes('TU_ID_AQUI');
@@ -46,9 +70,11 @@ function parseReservas(rows) {
     const hora   = (r[1] || '').toString().trim();
     const estado = (r[5] || '').toString().trim().toLowerCase();
     if (!fecha || !hora) continue;
-    if (!slotsData[fecha]) slotsData[fecha] = {};
+    const fechaClean = fecha.replace(/^'/, '');
+    const horaClean  = hora.replace(/^'/, '').substring(0, 5);
+    if (!slotsData[fechaClean]) slotsData[fechaClean] = {};
     const isBusy = estado !== 'cancelada';
-    slotsData[fecha][hora] = { status: isBusy ? 'busy' : 'free' };
+    slotsData[fechaClean][horaClean] = { status: isBusy ? 'busy' : 'free' };
   }
 }
 
@@ -60,7 +86,7 @@ function generateDemoData() {
   for (let d = 0; d < days; d++) {
     const date = new Date(today);
     date.setDate(today.getDate() + d);
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = formatBusinessDate(date);
     slotsData[dateStr] = {};
     slots.forEach((slot, i) => {
       const busy = (d === 0 && i < 2) || (d === 1 && i === 4);
@@ -69,19 +95,26 @@ function generateDemoData() {
   }
 }
 
+function isSlotPast(dateStr, timeStr) {
+  const todayStr = getBusinessDate();
+  if (dateStr !== todayStr) return false;
+  const nowTime = getBusinessTime();
+  return timeStr < nowTime;
+}
+
 function renderCalendar() {
   const grid = $('calendarGrid');
   grid.innerHTML = '';
-  const today = new Date();
+  const now = new Date();
   const diasSemana = ['Dom','Lun','Mar','Mie','Jue','Vie','Sab'];
   const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   const days = CONFIG.DAYS_AHEAD || 7;
   const slots = CONFIG.DEFAULT_SLOTS || ['09:00','10:00','11:00','12:00','14:00','15:00','16:00','17:00'];
 
   for (let d = 0; d < days; d++) {
-    const date = new Date(today);
-    date.setDate(today.getDate() + d);
-    const dateStr = date.toISOString().split('T')[0];
+    const date = new Date(now);
+    date.setDate(now.getDate() + d);
+    const dateStr = formatBusinessDate(date);
     const daySlots = slotsData[dateStr] || {};
 
     const card = document.createElement('div');
@@ -90,7 +123,14 @@ function renderCalendar() {
     slots.forEach(time => {
       const slot = daySlots[time] || { status: 'free' };
       const isBusy = slot.status === 'busy';
-      slotsHtml += `<button class="slot-btn px-3 py-2 w-full text-center" ${isBusy ? 'disabled title="Ocupado"' : `onclick="selectSlot('${dateStr}','${time}')"`}>${time}</button>`;
+      const isPast = isSlotPast(dateStr, time);
+      if (isBusy) {
+        slotsHtml += `<button class="slot-btn px-3 py-2 w-full text-center opacity-40 cursor-not-allowed" disabled title="Ocupado">${time}</button>`;
+      } else if (isPast) {
+        slotsHtml += `<button class="slot-btn px-3 py-2 w-full text-center opacity-30 cursor-not-allowed" disabled title="Horario cerrado">${time}</button>`;
+      } else {
+        slotsHtml += `<button class="slot-btn px-3 py-2 w-full text-center" onclick="selectSlot('${dateStr}','${time}')">${time}</button>`;
+      }
     });
 
     card.innerHTML = `
