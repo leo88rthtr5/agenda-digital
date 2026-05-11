@@ -1,48 +1,42 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Panel | Agenda Digital</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-  <style>
-    :root { --bg:#FDFCF8; --card:#F7F3EF; --ink:#3D405B; --muted:#9A9590; --accent:#E07A5F; --accent-soft:#F2CC8F; --border:#E8E4DE; --shadow:rgba(61,64,91,0.06); }
-    body { background:var(--bg); color:var(--ink); font-family:'Inter',sans-serif; margin:0; }
-    .font-mono { font-family:'Space Mono',monospace; }
-    .card-pastel { background:#fff; border:1px solid var(--border); border-radius:16px; box-shadow:0 2px 12px var(--shadow); }
-    .badge { font-family:'Space Mono',monospace; font-size:10px; font-weight:700; padding:4px 10px; border-radius:6px; text-transform:uppercase; display:inline-block; }
-    .badge-conf { background:var(--accent-soft); color:var(--ink); }
-    .badge-cancel { background:var(--card); color:var(--muted); text-decoration:line-through; }
-    .badge-paid { background:#81B29A; color:#fff; }
-    .badge-pending { background:var(--card); color:var(--muted); }
-    .btn-sm { padding:6px 12px; border-radius:8px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; border:1px solid var(--border); background:#fff; color:var(--ink); cursor:pointer; transition:all .15s; }
-    .btn-sm:hover { border-color:var(--accent); color:var(--accent); }
-    .btn-danger { border-color:var(--accent); color:var(--accent); }
-    .btn-danger:hover { background:var(--accent); color:#fff; }
-    .btn-ghost { border-color:transparent; color:var(--muted); }
-    .btn-ghost:hover { color:var(--ink); }
-    .filter-active { background:var(--ink); color:#fff; border-color:var(--ink); }
-    .stats-box { background:#fff; border:1px solid var(--border); border-radius:12px; padding:16px 20px; }
-    .next-bar { background:var(--ink); color:#fff; border-radius:12px; padding:14px 20px; }
-    ::-webkit-scrollbar { width:6px; }
-    ::-webkit-scrollbar-track { background:var(--bg); }
-    ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
-    ::selection { background:var(--accent); color:#fff; }
-    .login-screen { position: fixed; inset: 0; background: #FDFCF8; z-index: 50; display: flex; align-items: center; justify-content: center; }
-.login-box { background: #FFFFFF; border: 1px solid #E8E4DE; padding: 40px; width: 100%; max-width: 360px; }
-.login-input { width: 100%; background: #FDFCF8; border: 1px solid #E8E4DE; padding: 10px 12px; font-family: 'Space Mono', monospace; font-size: 12px; color: #3D405B; outline: none; }
-.login-input:focus { border-color: #3D405B; }
-.login-btn { width: 100%; background: #3D405B; color: #FDFCF8; font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; padding: 12px; border: none; cursor: pointer; }
-.login-btn:hover { opacity: 0.9; }
-.login-error { font-family: 'Space Mono', monospace; font-size: 10px; color: #E07A5F; margin-top: 8px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel de Reservas</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="config.js"></script>
+<script src="admin.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap');
+  body { font-family: 'Inter', sans-serif; background: #FDFCF8; color: #3D405B; }
+  .font-mono { font-family: 'Space Mono', monospace; }
+  .card-pastel { background: #FFFFFF; border: 1px solid #E8E4DE; }
+  .btn-sm { font-family: 'Space Mono', monospace; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 12px; border: 1px solid #E8E4DE; background: #FDFCF8; color: #3D405B; transition: all 0.15s; cursor: pointer; }
+  .btn-sm:hover { background: #3D405B; color: #FDFCF8; border-color: #3D405B; }
+  .btn-danger { border-color: #E07A5F; color: #E07A5F; }
+  .btn-danger:hover { background: #E07A5F; color: #fff; }
+  .badge { font-family: 'Space Mono', monospace; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 4px 8px; border-radius: 2px; }
+  .badge-conf { background: #F2CC8F; color: #3D405B; }
+  .badge-cancel { background: #E8E4DE; color: #9A9590; }
+  .badge-paid { background: #81B29A; color: #fff; }
+  .badge-pending { background: #E8E4DE; color: #9A9590; }
+  .btn-ghost { background: transparent; border: 1px solid transparent; color: #9A9590; }
+  .filter-active { background: #3D405B; color: #FDFCF8; border-color: #3D405B; }
+  .loading-shimmer { background: linear-gradient(90deg, #FDFCF8 0%, #E8E4DE 50%, #FDFCF8 100%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 2px; }
+  @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+  .login-screen { position: fixed; inset: 0; background: #FDFCF8; z-index: 50; display: flex; align-items: center; justify-content: center; }
+  .login-box { background: #FFFFFF; border: 1px solid #E8E4DE; padding: 40px; width: 100%; max-width: 360px; }
+  .login-input { width: 100%; background: #FDFCF8; border: 1px solid #E8E4DE; padding: 10px 12px; font-family: 'Space Mono', monospace; font-size: 12px; color: #3D405B; outline: none; }
+  .login-input:focus { border-color: #3D405B; }
+  .login-btn { width: 100%; background: #3D405B; color: #FDFCF8; font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; padding: 12px; border: none; cursor: pointer; }
+  .login-btn:hover { opacity: 0.9; }
+  .login-error { font-family: 'Space Mono', monospace; font-size: 10px; color: #E07A5F; margin-top: 8px; }
+</style>
 </head>
 <body class="min-h-screen">
 
-  <!-- LOGIN OVERLAY -->
+  <!-- LOGIN -->
   <div id="loginScreen" class="login-screen">
     <div class="login-box">
       <div class="text-xs font-mono font-bold text-[#9A9590] uppercase tracking-widest mb-1">Agenda Digital</div>
@@ -56,7 +50,6 @@
 
   <!-- PANEL -->
   <div id="panelContent" class="hidden">
-
     <header class="bg-white/70 backdrop-blur-sm border-b border-[#E8E4DE] px-5 md:px-10 py-4 sticky top-0 z-40">
       <div class="max-w-[1400px] mx-auto flex items-center justify-between">
         <div class="flex items-center gap-3">
@@ -71,10 +64,8 @@
     </header>
 
     <main class="max-w-[1400px] mx-auto p-5 md:p-10 space-y-6">
-
-      <!-- Próxima cita -->
-      <div id="nextBar" class="next-bar hidden">
-        <div class="flex items-center justify-between">
+      <div id="nextBar" class="hidden">
+        <div class="flex items-center justify-between p-4 bg-[#3D405B] text-white rounded-sm">
           <div>
             <span class="text-[10px] uppercase tracking-widest text-[#F2CC8F] font-mono font-bold">Siguiente cita</span>
             <div class="text-sm font-bold mt-0.5" id="nextText">--</div>
@@ -83,27 +74,13 @@
         </div>
       </div>
 
-      <!-- Stats -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div class="card-pastel p-4">
-          <div class="text-[10px] font-mono font-bold uppercase tracking-widest text-[#9A9590] mb-1">Esta semana</div>
-          <div id="statWeek" class="text-3xl font-bold text-[#3D405B]">0</div>
-        </div>
-        <div class="card-pastel p-4">
-          <div class="text-[10px] font-mono font-bold uppercase tracking-widest text-[#9A9590] mb-1">Hoy</div>
-          <div id="statToday" class="text-3xl font-bold text-[#E07A5F]">0</div>
-        </div>
-        <div class="card-pastel p-4">
-          <div class="text-[10px] font-mono font-bold uppercase tracking-widest text-[#9A9590] mb-1">Canceladas</div>
-          <div id="statCancel" class="text-3xl font-bold text-[#9A9590]">0</div>
-        </div>
-        <div class="card-pastel p-4">
-          <div class="text-[10px] font-mono font-bold uppercase tracking-widest text-[#9A9590] mb-1">Ingreso est.</div>
-          <div id="statIncome" class="text-3xl font-bold text-[#81B29A]">$0</div>
-        </div>
+        <div class="card-pastel p-4"><div class="text-[10px] font-mono font-bold uppercase tracking-widest text-[#9A9590] mb-1">Esta semana</div><div id="statWeek" class="text-3xl font-bold text-[#3D405B]">0</div></div>
+        <div class="card-pastel p-4"><div class="text-[10px] font-mono font-bold uppercase tracking-widest text-[#9A9590] mb-1">Hoy</div><div id="statToday" class="text-3xl font-bold text-[#E07A5F]">0</div></div>
+        <div class="card-pastel p-4"><div class="text-[10px] font-mono font-bold uppercase tracking-widest text-[#9A9590] mb-1">Canceladas</div><div id="statCancel" class="text-3xl font-bold text-[#9A9590]">0</div></div>
+        <div class="card-pastel p-4"><div class="text-[10px] font-mono font-bold uppercase tracking-widest text-[#9A9590] mb-1">Ingreso est.</div><div id="statIncome" class="text-3xl font-bold text-[#81B29A]">$0</div></div>
       </div>
 
-      <!-- Filtros -->
       <div class="flex items-center gap-2 overflow-x-auto pb-1">
         <button class="btn-sm filter-active" data-filter="all" onclick="setFilter('all')">Todas</button>
         <button class="btn-sm btn-ghost" data-filter="today" onclick="setFilter('today')">Hoy</button>
@@ -112,17 +89,15 @@
         <button class="btn-sm btn-ghost" data-filter="pending" onclick="setFilter('pending')">Pago pendiente</button>
       </div>
 
-      <!-- Lista -->
       <div class="flex items-center justify-between">
         <h2 class="text-lg font-bold text-[#3D405B]">Reservas entrantes</h2>
         <button id="btnReload" class="btn-sm">↻ Recargar</button>
       </div>
       <div id="emptyState" class="hidden text-xs text-[#9A9590] font-mono p-4">No hay reservas para este filtro.</div>
       <div id="reservasList" class="space-y-3"></div>
-
     </main>
-
   </div>
 
+  <script>init();</script>
 </body>
 </html>
