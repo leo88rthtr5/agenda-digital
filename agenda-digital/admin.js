@@ -1,16 +1,56 @@
 const $ = (id) => document.getElementById(id);
 
-let allReservas = [];
-let currentFilter = 'all';
-
 function init() {
+  if (!checkAuth()) {
+    showLogin();
+    return;
+  }
+  showPanel();
+}
+
+function checkAuth() {
+  try {
+    return sessionStorage.getItem('agenda_auth') === '1';
+  } catch (e) { return false; }
+}
+
+function showLogin() {
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('panelContent').classList.add('hidden');
+  document.getElementById('loginPass').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') doLogin();
+  });
+  document.getElementById('loginBtn').addEventListener('click', doLogin);
+  document.getElementById('loginPass').focus();
+}
+
+function doLogin() {
+  const pass = document.getElementById('loginPass').value.trim();
+  const expected = CONFIG.ADMIN_PASSWORD || 'peluqueria2024';
+  if (pass === expected) {
+    try { sessionStorage.setItem('agenda_auth', '1'); } catch (e) {}
+    showPanel();
+  } else {
+    document.getElementById('loginError').classList.remove('hidden');
+    document.getElementById('loginPass').value = '';
+    document.getElementById('loginPass').focus();
+  }
+}
+
+function showPanel() {
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('panelContent').classList.remove('hidden');
+  // El resto del init original va aquí:
   if (CONFIG.BUSINESS) {
-    const hb = $('headerBusiness');
+    const hb = document.getElementById('headerBusiness');
     if (hb) hb.textContent = CONFIG.BUSINESS + ' — Panel';
   }
-  $('btnReload').addEventListener('click', loadReservas);
+  document.getElementById('btnReload').addEventListener('click', loadReservas);
   loadReservas();
 }
+
+let allReservas = [];
+let currentFilter = 'all';
 
 function getBusinessDate() {
   const tz = CONFIG.TIMEZONE || 'America/Mexico_City';
