@@ -4,22 +4,16 @@ let allReservas = [];
 let currentFilter = 'all';
 
 function init() {
-  console.log('[init] ejecutado, auth=' + checkAuth());
-  if (!checkAuth()) {
-    showLogin();
-    return;
-  }
+  console.log('[init] auth=' + checkAuth());
+  if (!checkAuth()) { showLogin(); return; }
   showPanel();
 }
 
 function checkAuth() {
-  try {
-    return sessionStorage.getItem('agenda_auth') === '1';
-  } catch (e) { return false; }
+  try { return sessionStorage.getItem('agenda_auth') === '1'; } catch (e) { return false; }
 }
 
 function showLogin() {
-  console.log('[showLogin]');
   $('loginScreen').classList.remove('hidden');
   $('panelContent').classList.add('hidden');
   $('loginPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
@@ -30,7 +24,6 @@ function showLogin() {
 function doLogin() {
   const pass = $('loginPass').value.trim();
   const expected = CONFIG.ADMIN_PASSWORD || 'peluqueria2024';
-  console.log('[doLogin] pass="' + pass + '" expected="' + expected + '" match=' + (pass === expected));
   if (pass === expected) {
     try { sessionStorage.setItem('agenda_auth', '1'); } catch (e) {}
     showPanel();
@@ -42,7 +35,6 @@ function doLogin() {
 }
 
 function showPanel() {
-  console.log('[showPanel]');
   $('loginScreen').classList.add('hidden');
   $('panelContent').classList.remove('hidden');
   if (CONFIG.BUSINESS) {
@@ -66,56 +58,58 @@ function cleanDate(str) {
 
 function cleanTime(str) {
   if (!str) return '';
-  if (str.includes('T')) {
-    const t = str.split('T')[1];
-    return t ? t.substring(0, 5) : str;
-  }
+  if (str.includes('T')) { const t = str.split('T')[1]; return t ? t.substring(0, 5) : str; }
   return str.replace(/^'/, '').substring(0, 5);
 }
 
 async function loadReservas() {
   const list = $('reservasList');
-  list.innerHTML = '<div class="text-xs text-[#9A9590] font-mono p-4">Cargando...</div>';
-  const isDemo = !CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.includes('TU_ID_AQUI');
+  list.innerHTML = '<div class="text-xs text-[#9A9590] font-mono p-4">Cargando desde hoja...</div>';
+  allReservas = [];
 
-  if (!isDemo) {
-    try {
-      const res = await fetch(CONFIG.APPS_SCRIPT_URL + '?t=' + Date.now(), { cache: 'no-store' });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success && json.values && json.values.length > 1) {
-          allReservas = [];
-          const rows = json.values;
-          for (let i = 1; i < rows.length; i++) {
-            const r = rows[i];
-            allReservas.push({
-              fecha:    (r[0] || '').toString().trim(),
-              hora:     (r[1] || '').toString().trim(),
-              nombre:   (r[2] || '').toString().trim(),
-              whatsapp: (r[3] || '').toString().trim(),
-              servicio: (r[4] || '').toString().trim(),
-              estado:   (r[5] || '').toString().trim().toLowerCase(),
-              creado:   (r[6] || '').toString().trim(),
-              pago:     (r[7] || '').toString().trim().toLowerCase(),
-              nota:     (r[8] || '').toString().trim()
-            });
-          }
-          applyFilter(); updateStats(); updateNextBar();
-          return;
-        }
-      }
-    } catch (e) {
-      console.warn('Fetch Sheet falló, usando localStorage:', e.message);
-    }
+  const isDemo = !CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.includes('TU_ID_AQUI');
+  if (isDemo) {
+    loadFromLocal();
+    return;
   }
 
+  try {
+    const res = await fetch(CONFIG.APPS_SCRIPT_URL + '?t=' + Date.now(), { cache: 'no-store' });
+    const json = await res.json();
+    if (json.success && json.values && json.values.length > 1) {
+      const rows = json.values;
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        allReservas.push({
+          fecha:    String(r[0] || '').trim(),
+          hora:     String(r[1] || '').trim(),
+          nombre:   String(r[2] || '').trim(),
+          whatsapp: String(r[3] || '').trim(),
+          servicio: String(r[4] || '').trim(),
+          estado:   String(r[5] || '').trim().toLowerCase(),
+          creado:   String(r[6] || '').trim(),
+          pago:     String(r[7] || '').trim().toLowerCase(),
+          nota:     String(r[8] || '').trim()
+        });
+      }
+      applyFilter(); updateStats(); updateNextBar();
+      return;
+    } else {
+      console.warn('Sheet devolvió:', json);
+      list.innerHTML = '<div class="card-pastel p-5 text-xs text-[#E07A5F] font-mono">Sheet vacío o error. ¿Creaste la hoja "Reservas"?</div>';
+    }
+  } catch (e) {
+    console.warn('Fallo Sheet:', e.message);
+    list.innerHTML = '<div class="card-pastel p-5 text-xs text-[#E07A5F] font-mono">Error al conectar con Sheet. Revisa la URL en config.js y que el deploy sea "Anyone".</div>';
+  }
+}
+
+function loadFromLocal() {
   try {
     const stored = localStorage.getItem('agenda_reservas');
     allReservas = stored ? JSON.parse(stored) : [];
     applyFilter(); updateStats(); updateNextBar();
-  } catch (e) {
-    list.innerHTML = '<div class="card-pastel p-5 text-xs text-[#8b4513] font-mono">Error: ' + e.message + '</div>';
-  }
+  } catch (e) { console.error(e); }
 }
 
 function setFilter(f) {
@@ -125,10 +119,7 @@ function setFilter(f) {
     b.classList.add('btn-ghost');
   });
   const active = document.querySelector('[data-filter="' + f + '"]');
-  if (active) {
-    active.classList.add('filter-active');
-    active.classList.remove('btn-ghost');
-  }
+  if (active) { active.classList.add('filter-active'); active.classList.remove('btn-ghost'); }
   applyFilter();
 }
 
@@ -137,12 +128,18 @@ function applyFilter() {
   const today = new Date(todayStr + 'T00:00:00');
   const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
   const weekEnd = new Date(today); weekEnd.setDate(weekEnd.getDate() + 7);
+
   let filtered = allReservas.filter(r => r.estado !== 'cancelada');
   if (currentFilter === 'today') filtered = filtered.filter(r => cleanDate(r.fecha) === todayStr);
   else if (currentFilter === 'tomorrow') filtered = filtered.filter(r => new Date(cleanDate(r.fecha) + 'T00:00:00').getTime() === tomorrow.getTime());
   else if (currentFilter === 'week') filtered = filtered.filter(r => { const d = new Date(cleanDate(r.fecha) + 'T00:00:00'); return d >= today && d <= weekEnd; });
   else if (currentFilter === 'pending') filtered = filtered.filter(r => r.pago !== 'pagado');
-  if (filtered.length === 0) { $('reservasList').innerHTML = ''; $('emptyState').classList.remove('hidden'); return; }
+
+  if (filtered.length === 0) {
+    $('reservasList').innerHTML = '';
+    $('emptyState').classList.remove('hidden');
+    return;
+  }
   $('emptyState').classList.add('hidden');
   renderList(filtered);
 }
@@ -152,10 +149,14 @@ function updateStats() {
   const today = new Date(todayStr + 'T00:00:00');
   const weekEnd = new Date(today); weekEnd.setDate(weekEnd.getDate() + 7);
   const active = allReservas.filter(r => r.estado !== 'cancelada');
-  $('statWeek').textContent = active.filter(r => { const d = new Date(cleanDate(r.fecha) + 'T00:00:00'); return d >= today && d <= weekEnd; }).length;
-  $('statToday').textContent = active.filter(r => cleanDate(r.fecha) === todayStr).length;
-  $('statCancel').textContent = allReservas.filter(r => r.estado === 'cancelada').length;
-  $('statIncome').textContent = '$' + ($('statWeek').textContent * 300).toLocaleString();
+  const weekCount = active.filter(r => { const d = new Date(cleanDate(r.fecha) + 'T00:00:00'); return d >= today && d <= weekEnd; }).length;
+  const todayCount = active.filter(r => cleanDate(r.fecha) === todayStr).length;
+  const cancelCount = allReservas.filter(r => r.estado === 'cancelada').length;
+
+  $('statWeek').textContent = weekCount;
+  $('statToday').textContent = todayCount;
+  $('statCancel').textContent = cancelCount;
+  $('statIncome').textContent = '$' + (weekCount * 300).toLocaleString();
 }
 
 function updateNextBar() {
@@ -167,9 +168,10 @@ function updateNextBar() {
   $('nextBar').classList.remove('hidden');
   const fechaStr = cleanDate(upcoming.fecha);
   const horaStr = cleanTime(upcoming.hora);
-  $('nextText').textContent = (fechaStr === todayStr ? 'Hoy' : fechaStr) + ' a las ' + horaStr + ' — ' + upcoming.nombre + ' (' + (upcoming.servicio || 'Sin servicio') + ')';
+  const isToday = fechaStr === todayStr;
+  $('nextText').textContent = `${isToday ? 'Hoy' : fechaStr} a las ${horaStr} — ${upcoming.nombre} (${upcoming.servicio || 'Sin servicio'})`;
   const telClean = (upcoming.whatsapp || '').replace(/\D/g, '');
-  $('nextWA').href = telClean ? 'https://wa.me/52' + telClean : '#';
+  $('nextWA').href = telClean ? `https://wa.me/52${telClean}` : '#';
 }
 
 function findIndex(fecha, hora) {
@@ -188,6 +190,7 @@ function renderList(reservas) {
     const fechaLimpia = cleanDate(r.fecha);
     const horaLimpia = cleanTime(r.hora);
     const idSafe = fechaLimpia + '-' + horaLimpia.replace(':', '-');
+
     const div = document.createElement('div');
     div.className = 'card-pastel p-5';
     div.innerHTML = `
@@ -238,8 +241,8 @@ async function cancelReserva(fecha, hora) {
   }
   try {
     const res = await fetch(CONFIG.APPS_SCRIPT_URL, { method: 'POST', redirect: 'follow', body: JSON.stringify({ accion: 'cancelar', fecha, hora }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
-    alert('Reserva cancelada. Recarga para ver cambios.');
-    loadReservas();
+    const json = await res.json();
+    if (json.success) { loadReservas(); } else { alert('Error: ' + (json.error || 'desconocido')); }
   } catch (err) { alert('Error al cancelar: ' + err.message); }
 }
 
@@ -260,9 +263,10 @@ async function togglePay(fecha, hora) {
     return;
   }
   try {
-    await fetch(CONFIG.APPS_SCRIPT_URL, { method: 'POST', redirect: 'follow', body: JSON.stringify({ accion: 'pagar', fecha, hora, valor: nuevoEstado }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
-    allReservas[idx].pago = nuevoEstado;
-    applyFilter(); updateStats();
+    const res = await fetch(CONFIG.APPS_SCRIPT_URL, { method: 'POST', redirect: 'follow', body: JSON.stringify({ accion: 'pagar', fecha, hora, valor: nuevoEstado }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
+    const json = await res.json();
+    if (json.success) { allReservas[idx].pago = nuevoEstado; applyFilter(); updateStats(); }
+    else { cb.checked = !cb.checked; alert('Error: ' + (json.error || 'desconocido')); }
   } catch (err) { console.error('Error al actualizar pago:', err); cb.checked = !cb.checked; }
 }
 
@@ -283,7 +287,9 @@ async function saveNote(fecha, hora) {
     return;
   }
   try {
-    await fetch(CONFIG.APPS_SCRIPT_URL, { method: 'POST', redirect: 'follow', body: JSON.stringify({ accion: 'nota', fecha, hora, nota }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
-    allReservas[idx].nota = nota;
+    const res = await fetch(CONFIG.APPS_SCRIPT_URL, { method: 'POST', redirect: 'follow', body: JSON.stringify({ accion: 'nota', fecha, hora, nota }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
+    const json = await res.json();
+    if (json.success) { allReservas[idx].nota = nota; }
+    else { alert('Error: ' + (json.error || 'desconocido')); }
   } catch (err) { console.error('Error al guardar nota:', err); }
 }
