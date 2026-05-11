@@ -35,64 +35,64 @@ function getBusinessTime() {
     if (p.type === 'hour') hh = p.value;
     if (p.type === 'minute') mm = p.value;
   }
-  return `${hh.padStart(2, '0')}:${mm.padStart(2, '0')}`;
+  return hh.padStart(2, '0') + ':' + mm.padStart(2, '0');
 }
 
-async function loadData() {
+function loadData() {
   renderLoading();
-  const isDemo = !CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.includes('TU_ID_AQUI');
+  slotsData = {};
+  fetchSheetData().then(() => renderCalendar());
+}
 
+async function fetchSheetData() {
+  const isDemo = !CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.includes('TU_ID_AQUI');
+  if (isDemo) {
+    loadFromLocal();
+    return;
+  }
   try {
-    if (isDemo) {
-      console.warn('[DEMO] Usando datos de prueba.');
-      await new Promise(r => setTimeout(r, 400));
-      generateDemoData();
+    const res = await fetch(CONFIG.APPS_SCRIPT_URL + '?t=' + Date.now(), { cache: 'no-store' });
+    const json = await res.json();
+    if (json.success && json.values) {
+      const rows = json.values;
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        const fecha = String(r[0] || '').trim().replace(/^'/, '');
+        const hora = String(r[1] || '').trim().replace(/^'/, '').substring(0, 5);
+        const estado = String(r[5] || '').trim().toLowerCase();
+        if (!fecha || !hora) continue;
+        if (estado === 'cancelada') {
+          if (slotsData[fecha]) delete slotsData[fecha][hora];
+          continue;
+        }
+        if (!slotsData[fecha]) slotsData[fecha] = {};
+        slotsData[fecha][hora] = { status: 'busy' };
+      }
     } else {
-      const res = await fetch(CONFIG.APPS_SCRIPT_URL + '?t=' + Date.now(), { cache: 'no-store' });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error || 'Error del servidor');
-      parseReservas(json.values);
+      console.warn('Sheet devolvió error:', json.error);
+      loadFromLocal();
     }
   } catch (e) {
-    console.warn('Fallo al cargar desde Sheets:', e.message);
-    generateDemoData();
-  }
-  renderCalendar();
-}
-
-function parseReservas(rows) {
-  if (!rows || rows.length < 2) { generateDemoData(); return; }
-  slotsData = {};
-  for (let i = 1; i < rows.length; i++) {
-    const r = rows[i];
-    const fecha  = (r[0] || '').toString().trim();
-    const hora   = (r[1] || '').toString().trim();
-    const estado = (r[5] || '').toString().trim().toLowerCase();
-    if (!fecha || !hora) continue;
-    const fechaClean = fecha.replace(/^'/, '');
-    const horaClean  = hora.replace(/^'/, '').substring(0, 5);
-    if (!slotsData[fechaClean]) slotsData[fechaClean] = {};
-    const isBusy = estado !== 'cancelada';
-    slotsData[fechaClean][horaClean] = { status: isBusy ? 'busy' : 'free' };
+    console.warn('Fallo Sheet, usando local:', e.message);
+    loadFromLocal();
   }
 }
 
-function generateDemoData() {
-  slotsData = {};
-  const today = new Date();
-  const days = CONFIG.DAYS_AHEAD || 7;
-  const slots = CONFIG.DEFAULT_SLOTS || ['09:00','10:00','11:00','12:00','14:00','15:00','16:00','17:00'];
-  for (let d = 0; d < days; d++) {
-    const date = new Date(today);
-    date.setDate(today.getDate() + d);
-    const dateStr = formatBusinessDate(date);
-    slotsData[dateStr] = {};
-    slots.forEach((slot, i) => {
-      const busy = (d === 0 && i < 2) || (d === 1 && i === 4);
-      slotsData[dateStr][slot] = { status: busy ? 'busy' : 'free' };
+function loadFromLocal() {
+  try {
+    const stored = localStorage.getItem('agenda_reservas');
+    if (!stored) return;
+    const reservas = JSON.parse(stored);
+    reservas.forEach(r => {
+      if (!r.fecha || !r.hora) return;
+      if (r.estado === 'cancelada') {
+        if (slotsData[r.fecha]) delete slotsData[r.fecha][r.hora.substring(0, 5)];
+        return;
+      }
+      if (!slotsData[r.fecha]) slotsData[r.fecha] = {};
+      slotsData[r.fecha][r.hora.substring(0, 5)] = { status: 'busy' };
     });
-  }
+  } catch (e) { console.error(e); }
 }
 
 function isSlotPast(dateStr, timeStr) {
@@ -204,45 +204,51 @@ async function onSubmit(e) {
   btn.disabled = true;
   btn.textContent = 'Guardando...';
 
+  // 1. Notificar WhatsApp inmediatamente
   notifyWhatsApp(date, time, nombre, phone, servicio);
 
-  const isDemo = !CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.includes('TU_ID_AQUI');
+  // 2. Guardar en localStorage como respaldo
+  saveToLocal(date, time, nombre, phone, servicio, 'pendiente');
 
-  if (isDemo) {
-    if (!slotsData[date]) slotsData[date] = {};
-    slotsData[date][time] = { status: 'busy' };
-    saveToLocal(date, time, nombre, phone, servicio, 'pendiente');
-    showSuccess();
-    btn.disabled = false;
-    btn.textContent = 'Confirmar Reserva';
-    return;
-  }
+  // 3. Marcar slot ocupado localmente
+  if (!slotsData[date]) slotsData[date] = {};
+  slotsData[date][time] = { status: 'busy' };
+  renderCalendar();
 
+  // 4. Intentar guardar en Sheet (primordial)
+  let sheetOk = false;
   try {
     const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
       method: 'POST',
       redirect: 'follow',
-      body: JSON.stringify({ fecha: date, hora: time, nombre, whatsapp: phone, servicio, pago: 'pendiente' }),
+      body: JSON.stringify({
+        fecha: date,
+        hora: time,
+        nombre: nombre,
+        whatsapp: phone,
+        servicio: servicio || '',
+        pago: 'pendiente'
+      }),
       headers: { 'Content-Type': 'text/plain;charset=utf-8' }
     });
-    const text = await res.text();
-    let json = { success: true };
-    try { json = JSON.parse(text); } catch {}
-    if (!json.success) throw new Error(json.error || 'Error al guardar');
-
-    if (!slotsData[date]) slotsData[date] = {};
-    slotsData[date][time] = { status: 'busy' };
-    showSuccess();
+    const json = await res.json();
+    if (json.success) {
+      sheetOk = true;
+      console.log('Guardado en Sheet OK');
+    } else {
+      console.warn('Sheet error:', json.error);
+    }
   } catch (err) {
-    console.error('POST falló:', err);
-    alert('No se pudo guardar en la base de datos, pero ya enviamos WhatsApp al negocio.');
-    if (!slotsData[date]) slotsData[date] = {};
-    slotsData[date][time] = { status: 'busy' };
-    showSuccess();
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Confirmar Reserva';
+    console.warn('Sheet POST falló:', err.message);
   }
+
+  if (!sheetOk) {
+    alert('⚠️ Reserva guardada localmente pero NO llegó al Sheet. Revisa tu conexión o la URL del Apps Script.');
+  }
+
+  showSuccess();
+  btn.disabled = false;
+  btn.textContent = 'Confirmar Reserva';
 }
 
 function notifyWhatsApp(date, time, nombre, phone, servicio) {
@@ -261,9 +267,13 @@ function saveToLocal(date, time, nombre, phone, servicio, pago) {
     const stored = localStorage.getItem('agenda_reservas');
     const reservas = stored ? JSON.parse(stored) : [];
     reservas.push({
-      fecha: date, hora: time, nombre, whatsapp: phone,
-      servicio: servicio || '', estado: 'confirmada',
-      creado: new Date().toISOString(),
+      fecha: date,
+      hora: time,
+      nombre: nombre,
+      whatsapp: phone,
+      servicio: servicio || '',
+      estado: 'confirmada',
+      creado: new Date().toLocaleString('es-MX', { timeZone: CONFIG.TIMEZONE || 'America/Mexico_City' }),
       pago: pago || 'pendiente'
     });
     localStorage.setItem('agenda_reservas', JSON.stringify(reservas));
@@ -273,7 +283,6 @@ function saveToLocal(date, time, nombre, phone, servicio, pago) {
 function showSuccess() {
   $('formActive').classList.add('hidden');
   $('formSuccess').classList.remove('hidden');
-  renderCalendar();
 }
 
 if (document.readyState === 'loading') {
