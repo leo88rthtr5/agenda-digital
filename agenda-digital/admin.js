@@ -1,6 +1,10 @@
 const $ = (id) => document.getElementById(id);
 
+let allReservas = [];
+let currentFilter = 'all';
+
 function init() {
+  console.log('[init] ejecutado, auth=' + checkAuth());
   if (!checkAuth()) {
     showLogin();
     return;
@@ -15,53 +19,44 @@ function checkAuth() {
 }
 
 function showLogin() {
-  document.getElementById('loginScreen').classList.remove('hidden');
-  document.getElementById('panelContent').classList.add('hidden');
-  document.getElementById('loginPass').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') doLogin();
-  });
-  document.getElementById('loginBtn').addEventListener('click', doLogin);
-  document.getElementById('loginPass').focus();
+  console.log('[showLogin]');
+  $('loginScreen').classList.remove('hidden');
+  $('panelContent').classList.add('hidden');
+  $('loginPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+  $('loginBtn').addEventListener('click', doLogin);
+  $('loginPass').focus();
 }
 
 function doLogin() {
-  const pass = document.getElementById('loginPass').value.trim();
+  const pass = $('loginPass').value.trim();
   const expected = CONFIG.ADMIN_PASSWORD || 'peluqueria2024';
+  console.log('[doLogin] pass="' + pass + '" expected="' + expected + '" match=' + (pass === expected));
   if (pass === expected) {
     try { sessionStorage.setItem('agenda_auth', '1'); } catch (e) {}
     showPanel();
   } else {
-    document.getElementById('loginError').classList.remove('hidden');
-    document.getElementById('loginPass').value = '';
-    document.getElementById('loginPass').focus();
+    $('loginError').classList.remove('hidden');
+    $('loginPass').value = '';
+    $('loginPass').focus();
   }
 }
 
 function showPanel() {
-  document.getElementById('loginScreen').classList.add('hidden');
-  document.getElementById('panelContent').classList.remove('hidden');
-  // El resto del init original va aquí:
+  console.log('[showPanel]');
+  $('loginScreen').classList.add('hidden');
+  $('panelContent').classList.remove('hidden');
   if (CONFIG.BUSINESS) {
-    const hb = document.getElementById('headerBusiness');
+    const hb = $('headerBusiness');
     if (hb) hb.textContent = CONFIG.BUSINESS + ' — Panel';
   }
-  document.getElementById('btnReload').addEventListener('click', loadReservas);
+  $('btnReload').addEventListener('click', loadReservas);
   loadReservas();
 }
-
-let allReservas = [];
-let currentFilter = 'all';
 
 function getBusinessDate() {
   const tz = CONFIG.TIMEZONE || 'America/Mexico_City';
   const dtf = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' });
   return dtf.format(new Date());
-}
-
-function formatBusinessDate(d) {
-  const tz = CONFIG.TIMEZONE || 'America/Mexico_City';
-  const dtf = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' });
-  return dtf.format(d);
 }
 
 function cleanDate(str) {
@@ -81,7 +76,6 @@ function cleanTime(str) {
 async function loadReservas() {
   const list = $('reservasList');
   list.innerHTML = '<div class="text-xs text-[#9A9590] font-mono p-4">Cargando...</div>';
-
   const isDemo = !CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.includes('TU_ID_AQUI');
 
   if (!isDemo) {
@@ -106,9 +100,7 @@ async function loadReservas() {
               nota:     (r[8] || '').toString().trim()
             });
           }
-          applyFilter();
-          updateStats();
-          updateNextBar();
+          applyFilter(); updateStats(); updateNextBar();
           return;
         }
       }
@@ -120,9 +112,7 @@ async function loadReservas() {
   try {
     const stored = localStorage.getItem('agenda_reservas');
     allReservas = stored ? JSON.parse(stored) : [];
-    applyFilter();
-    updateStats();
-    updateNextBar();
+    applyFilter(); updateStats(); updateNextBar();
   } catch (e) {
     list.innerHTML = '<div class="card-pastel p-5 text-xs text-[#8b4513] font-mono">Error: ' + e.message + '</div>';
   }
@@ -145,34 +135,14 @@ function setFilter(f) {
 function applyFilter() {
   const todayStr = getBusinessDate();
   const today = new Date(todayStr + 'T00:00:00');
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const weekEnd = new Date(today);
-  weekEnd.setDate(weekEnd.getDate() + 7);
-
+  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+  const weekEnd = new Date(today); weekEnd.setDate(weekEnd.getDate() + 7);
   let filtered = allReservas.filter(r => r.estado !== 'cancelada');
-
-  if (currentFilter === 'today') {
-    filtered = filtered.filter(r => cleanDate(r.fecha) === todayStr);
-  } else if (currentFilter === 'tomorrow') {
-    filtered = filtered.filter(r => {
-      const d = new Date(cleanDate(r.fecha) + 'T00:00:00');
-      return d.getTime() === tomorrow.getTime();
-    });
-  } else if (currentFilter === 'week') {
-    filtered = filtered.filter(r => {
-      const d = new Date(cleanDate(r.fecha) + 'T00:00:00');
-      return d >= today && d <= weekEnd;
-    });
-  } else if (currentFilter === 'pending') {
-    filtered = filtered.filter(r => r.pago !== 'pagado');
-  }
-
-  if (filtered.length === 0) {
-    $('reservasList').innerHTML = '';
-    $('emptyState').classList.remove('hidden');
-    return;
-  }
+  if (currentFilter === 'today') filtered = filtered.filter(r => cleanDate(r.fecha) === todayStr);
+  else if (currentFilter === 'tomorrow') filtered = filtered.filter(r => new Date(cleanDate(r.fecha) + 'T00:00:00').getTime() === tomorrow.getTime());
+  else if (currentFilter === 'week') filtered = filtered.filter(r => { const d = new Date(cleanDate(r.fecha) + 'T00:00:00'); return d >= today && d <= weekEnd; });
+  else if (currentFilter === 'pending') filtered = filtered.filter(r => r.pago !== 'pagado');
+  if (filtered.length === 0) { $('reservasList').innerHTML = ''; $('emptyState').classList.remove('hidden'); return; }
   $('emptyState').classList.add('hidden');
   renderList(filtered);
 }
@@ -180,45 +150,26 @@ function applyFilter() {
 function updateStats() {
   const todayStr = getBusinessDate();
   const today = new Date(todayStr + 'T00:00:00');
-  const weekEnd = new Date(today);
-  weekEnd.setDate(weekEnd.getDate() + 7);
-
+  const weekEnd = new Date(today); weekEnd.setDate(weekEnd.getDate() + 7);
   const active = allReservas.filter(r => r.estado !== 'cancelada');
-  const weekCount = active.filter(r => {
-    const d = new Date(cleanDate(r.fecha) + 'T00:00:00');
-    return d >= today && d <= weekEnd;
-  }).length;
-  const todayCount = active.filter(r => cleanDate(r.fecha) === todayStr).length;
-  const cancelCount = allReservas.filter(r => r.estado === 'cancelada').length;
-
-  $('statWeek').textContent = weekCount;
-  $('statToday').textContent = todayCount;
-  $('statCancel').textContent = cancelCount;
-  $('statIncome').textContent = '$' + (weekCount * 300).toLocaleString();
+  $('statWeek').textContent = active.filter(r => { const d = new Date(cleanDate(r.fecha) + 'T00:00:00'); return d >= today && d <= weekEnd; }).length;
+  $('statToday').textContent = active.filter(r => cleanDate(r.fecha) === todayStr).length;
+  $('statCancel').textContent = allReservas.filter(r => r.estado === 'cancelada').length;
+  $('statIncome').textContent = '$' + ($('statWeek').textContent * 300).toLocaleString();
 }
 
 function updateNextBar() {
   const now = new Date();
   const todayStr = getBusinessDate();
   const active = allReservas.filter(r => r.estado !== 'cancelada');
-  const upcoming = active
-    .map(r => ({ ...r, ts: new Date(cleanDate(r.fecha) + 'T' + cleanTime(r.hora) + ':00').getTime() }))
-    .filter(r => r.ts >= now.getTime())
-    .sort((a, b) => a.ts - b.ts)[0];
-
-  if (!upcoming) {
-    $('nextBar').classList.add('hidden');
-    return;
-  }
+  const upcoming = active.map(r => ({ ...r, ts: new Date(cleanDate(r.fecha) + 'T' + cleanTime(r.hora) + ':00').getTime() })).filter(r => r.ts >= now.getTime()).sort((a, b) => a.ts - b.ts)[0];
+  if (!upcoming) { $('nextBar').classList.add('hidden'); return; }
   $('nextBar').classList.remove('hidden');
   const fechaStr = cleanDate(upcoming.fecha);
   const horaStr = cleanTime(upcoming.hora);
-  const isToday = fechaStr === todayStr;
-  const label = isToday ? 'Hoy' : fechaStr;
-  $('nextText').textContent = `${label} a las ${horaStr} — ${upcoming.nombre} (${upcoming.servicio || 'Sin servicio'})`;
-
+  $('nextText').textContent = (fechaStr === todayStr ? 'Hoy' : fechaStr) + ' a las ' + horaStr + ' — ' + upcoming.nombre + ' (' + (upcoming.servicio || 'Sin servicio') + ')';
   const telClean = (upcoming.whatsapp || '').replace(/\D/g, '');
-  $('nextWA').href = telClean ? `https://wa.me/52${telClean}` : '#';
+  $('nextWA').href = telClean ? 'https://wa.me/52' + telClean : '#';
 }
 
 function findIndex(fecha, hora) {
@@ -228,7 +179,6 @@ function findIndex(fecha, hora) {
 function renderList(reservas) {
   const list = $('reservasList');
   list.innerHTML = '';
-
   reservas.forEach((r) => {
     const isCancel = r.estado === 'cancelada';
     const badgeClass = isCancel ? 'badge-cancel' : 'badge-conf';
@@ -238,7 +188,6 @@ function renderList(reservas) {
     const fechaLimpia = cleanDate(r.fecha);
     const horaLimpia = cleanTime(r.hora);
     const idSafe = fechaLimpia + '-' + horaLimpia.replace(':', '-');
-
     const div = document.createElement('div');
     div.className = 'card-pastel p-5';
     div.innerHTML = `
@@ -275,121 +224,66 @@ function renderList(reservas) {
 
 async function cancelReserva(fecha, hora) {
   if (!confirm('¿Cancelar esta reserva? El horario quedará libre.')) return;
-
   const isDemo = !CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.includes('TU_ID_AQUI');
-
   if (isDemo) {
     try {
       const stored = localStorage.getItem('agenda_reservas');
       let reservas = stored ? JSON.parse(stored) : [];
-      reservas = reservas.map(r => {
-        if (cleanDate(r.fecha) === fecha && cleanTime(r.hora) === hora) {
-          return { ...r, estado: 'cancelada' };
-        }
-        return r;
-      });
+      reservas = reservas.map(r => { if (cleanDate(r.fecha) === fecha && cleanTime(r.hora) === hora) return { ...r, estado: 'cancelada' }; return r; });
       localStorage.setItem('agenda_reservas', JSON.stringify(reservas));
       allReservas = reservas;
-      applyFilter();
-      updateStats();
-      updateNextBar();
+      applyFilter(); updateStats(); updateNextBar();
     } catch (e) { console.error(e); }
     return;
   }
-
   try {
-    const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
-      method: 'POST',
-      redirect: 'follow',
-      body: JSON.stringify({ accion: 'cancelar', fecha, hora }),
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-    });
-    const text = await res.text();
+    const res = await fetch(CONFIG.APPS_SCRIPT_URL, { method: 'POST', redirect: 'follow', body: JSON.stringify({ accion: 'cancelar', fecha, hora }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
     alert('Reserva cancelada. Recarga para ver cambios.');
     loadReservas();
-  } catch (err) {
-    alert('Error al cancelar: ' + err.message);
-  }
+  } catch (err) { alert('Error al cancelar: ' + err.message); }
 }
 
 async function togglePay(fecha, hora) {
   const idSafe = fecha + '-' + hora.replace(':', '-');
   const cb = document.getElementById('pay-' + idSafe);
   if (!cb) return;
-
   const idx = findIndex(fecha, hora);
   if (idx === -1) return;
-
   const isDemo = !CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.includes('TU_ID_AQUI');
   const nuevoEstado = cb.checked ? 'pagado' : 'pendiente';
-
   if (isDemo) {
     try {
       const stored = localStorage.getItem('agenda_reservas');
       let reservas = stored ? JSON.parse(stored) : [];
-      if (reservas[idx]) {
-        reservas[idx].pago = nuevoEstado;
-        localStorage.setItem('agenda_reservas', JSON.stringify(reservas));
-        allReservas = reservas;
-        applyFilter(); updateStats();
-      }
+      if (reservas[idx]) { reservas[idx].pago = nuevoEstado; localStorage.setItem('agenda_reservas', JSON.stringify(reservas)); allReservas = reservas; applyFilter(); updateStats(); }
     } catch (e) { console.error(e); }
     return;
   }
-
   try {
-    await fetch(CONFIG.APPS_SCRIPT_URL, {
-      method: 'POST',
-      redirect: 'follow',
-      body: JSON.stringify({ accion: 'pagar', fecha, hora, valor: nuevoEstado }),
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-    });
+    await fetch(CONFIG.APPS_SCRIPT_URL, { method: 'POST', redirect: 'follow', body: JSON.stringify({ accion: 'pagar', fecha, hora, valor: nuevoEstado }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
     allReservas[idx].pago = nuevoEstado;
     applyFilter(); updateStats();
-  } catch (err) {
-    console.error('Error al actualizar pago:', err);
-    cb.checked = !cb.checked;
-  }
+  } catch (err) { console.error('Error al actualizar pago:', err); cb.checked = !cb.checked; }
 }
 
 async function saveNote(fecha, hora) {
   const idSafe = fecha + '-' + hora.replace(':', '-');
   const ta = document.getElementById('note-' + idSafe);
   if (!ta) return;
-
   const idx = findIndex(fecha, hora);
   if (idx === -1) return;
-
   const isDemo = !CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.includes('TU_ID_AQUI');
   const nota = ta.value.trim();
-
   if (isDemo) {
     try {
       const stored = localStorage.getItem('agenda_reservas');
       let reservas = stored ? JSON.parse(stored) : [];
-      if (reservas[idx]) {
-        reservas[idx].nota = nota;
-        localStorage.setItem('agenda_reservas', JSON.stringify(reservas));
-      }
+      if (reservas[idx]) { reservas[idx].nota = nota; localStorage.setItem('agenda_reservas', JSON.stringify(reservas)); }
     } catch (e) { console.error(e); }
     return;
   }
-
   try {
-    await fetch(CONFIG.APPS_SCRIPT_URL, {
-      method: 'POST',
-      redirect: 'follow',
-      body: JSON.stringify({ accion: 'nota', fecha, hora, nota }),
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-    });
+    await fetch(CONFIG.APPS_SCRIPT_URL, { method: 'POST', redirect: 'follow', body: JSON.stringify({ accion: 'nota', fecha, hora, nota }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
     allReservas[idx].nota = nota;
-  } catch (err) {
-    console.error('Error al guardar nota:', err);
-  }
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else {
-  init();
+  } catch (err) { console.error('Error al guardar nota:', err); }
 }
