@@ -12,9 +12,21 @@ function init() {
   loadReservas();
 }
 
+function getBusinessDate() {
+  const tz = CONFIG.TIMEZONE || 'America/Mexico_City';
+  const dtf = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' });
+  return dtf.format(new Date());
+}
+
+function formatBusinessDate(d) {
+  const tz = CONFIG.TIMEZONE || 'America/Mexico_City';
+  const dtf = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' });
+  return dtf.format(d);
+}
+
 function cleanDate(str) {
   if (!str) return '';
-  return str.includes('T') ? str.split('T')[0] : str;
+  return str.includes('T') ? str.split('T')[0] : str.replace(/^'/, '');
 }
 
 function cleanTime(str) {
@@ -23,7 +35,7 @@ function cleanTime(str) {
     const t = str.split('T')[1];
     return t ? t.substring(0, 5) : str;
   }
-  return str;
+  return str.replace(/^'/, '').substring(0, 5);
 }
 
 async function loadReservas() {
@@ -91,8 +103,8 @@ function setFilter(f) {
 }
 
 function applyFilter() {
-  const today = new Date();
-  today.setHours(0,0,0,0);
+  const todayStr = getBusinessDate();
+  const today = new Date(todayStr + 'T00:00:00');
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
   const weekEnd = new Date(today);
@@ -101,10 +113,7 @@ function applyFilter() {
   let filtered = allReservas.filter(r => r.estado !== 'cancelada');
 
   if (currentFilter === 'today') {
-    filtered = filtered.filter(r => {
-      const d = new Date(cleanDate(r.fecha) + 'T00:00:00');
-      return d.getTime() === today.getTime();
-    });
+    filtered = filtered.filter(r => cleanDate(r.fecha) === todayStr);
   } else if (currentFilter === 'tomorrow') {
     filtered = filtered.filter(r => {
       const d = new Date(cleanDate(r.fecha) + 'T00:00:00');
@@ -129,8 +138,8 @@ function applyFilter() {
 }
 
 function updateStats() {
-  const today = new Date();
-  today.setHours(0,0,0,0);
+  const todayStr = getBusinessDate();
+  const today = new Date(todayStr + 'T00:00:00');
   const weekEnd = new Date(today);
   weekEnd.setDate(weekEnd.getDate() + 7);
 
@@ -139,10 +148,7 @@ function updateStats() {
     const d = new Date(cleanDate(r.fecha) + 'T00:00:00');
     return d >= today && d <= weekEnd;
   }).length;
-  const todayCount = active.filter(r => {
-    const d = new Date(cleanDate(r.fecha) + 'T00:00:00');
-    return d.getTime() === today.getTime();
-  }).length;
+  const todayCount = active.filter(r => cleanDate(r.fecha) === todayStr).length;
   const cancelCount = allReservas.filter(r => r.estado === 'cancelada').length;
 
   $('statWeek').textContent = weekCount;
@@ -153,6 +159,7 @@ function updateStats() {
 
 function updateNextBar() {
   const now = new Date();
+  const todayStr = getBusinessDate();
   const active = allReservas.filter(r => r.estado !== 'cancelada');
   const upcoming = active
     .map(r => ({ ...r, ts: new Date(cleanDate(r.fecha) + 'T' + cleanTime(r.hora) + ':00').getTime() }))
@@ -166,7 +173,7 @@ function updateNextBar() {
   $('nextBar').classList.remove('hidden');
   const fechaStr = cleanDate(upcoming.fecha);
   const horaStr = cleanTime(upcoming.hora);
-  const isToday = fechaStr === now.toISOString().split('T')[0];
+  const isToday = fechaStr === todayStr;
   const label = isToday ? 'Hoy' : fechaStr;
   $('nextText').textContent = `${label} a las ${horaStr} — ${upcoming.nombre} (${upcoming.servicio || 'Sin servicio'})`;
 
@@ -174,7 +181,6 @@ function updateNextBar() {
   $('nextWA').href = telClean ? `https://wa.me/52${telClean}` : '#';
 }
 
-// Busca índice real en allReservas por fecha+hora
 function findIndex(fecha, hora) {
   return allReservas.findIndex(r => cleanDate(r.fecha) === fecha && cleanTime(r.hora) === hora);
 }
@@ -191,7 +197,6 @@ function renderList(reservas) {
     const telClean = (r.whatsapp || '').replace(/\D/g, '');
     const fechaLimpia = cleanDate(r.fecha);
     const horaLimpia = cleanTime(r.hora);
-    // ID único basado en fecha+hora para los inputs
     const idSafe = fechaLimpia + '-' + horaLimpia.replace(':', '-');
 
     const div = document.createElement('div');
